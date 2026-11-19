@@ -1,0 +1,24 @@
+{{flash}}
+{{head}}
+<p class="muted small mono">判定基准时点 T = {{reference}}</p>
+
+<section class="pipe-wrap">
+  <div class="pipe-legend">
+    <span><i class="lg ok"></i>已走通</span>
+    <span><i class="lg none"></i>无记录</span>
+    <span><i class="lg broken"></i>断点</span>
+    <span><i class="lg ghost"></i>预计</span>
+  </div>
+  {{svg}}
+</section>
+
+{{main_summary}}
+
+<section class="drawers">
+  <h2>凭什么这样判断？</h2>
+  <p class="muted small">每条结论都附三段证据：原始流水对照、逐行计算过程、判定依据（规则名 / 阈值快照 / 完整 SQL）。</p>
+  {{drawers}}
+</section>
+
+{{export_buttons}}
+{{related}}

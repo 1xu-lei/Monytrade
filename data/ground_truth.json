@@ -1,0 +1,65 @@
+{
+  "seed": 20261119,
+  "generated_by": "gen_data.py",
+  "counts": {
+    "orders": 24,
+    "refunds": 9,
+    "settlements": 21
+  },
+  "totals": {
+    "order_total_fen": 342845,
+    "received_fen": 251945,
+    "fee_fen": 2852,
+    "refund_fen": 26100
+  },
+  "expected_anomalies": [
+    {
+      "label_code": "NOT_SETTLED",
+      "order_id": "MT20260919-004"
+    },
+    {
+      "label_code": "NOT_SETTLED",
+      "order_id": "MT20260920-002"
+    },
+    {
+      "label_code": "NOT_SETTLED",
+      "order_id": "MT20260921-001"
+    },
+    {
+      "label_code": "AMOUNT_MISMATCH",
+      "order_id": "MT20260919-002"
+    },
+    {
+      "label_code": "DUP_REFUND",
+      "order_id": "MT20260919-007"
+    },
+    {
+      "label_code": "FEE_ANOMALY",
+      "order_id": "MT20260920-001"
+    },
+    {
+      "label_code": "DUP_REFUND",
+      "order_id": "MT20260920-005"
+    },
+    {
+      "label_code": "FEE_ANOMALY",
+      "order_id": "MT20260921-005"
+    },
+    {
+      "label_code": "AMOUNT_MISMATCH",
+      "order_id": "MT20260921-006"
+    }
+  ],
+  "annotations": {
+    "NOT_SETTLED@MT20260919-004": "规则一：结算表查无该订单号",
+    "NOT_SETTLED@MT20260920-002": "规则一：结算表查无该订单号",
+    "NOT_SETTLED@MT20260921-001": "规则一：结算表查无该订单号（演示主线）",
+    "AMOUNT_MISMATCH@MT20260919-002": "规则三：平台少付 176 分",
+    "DUP_REFUND@MT20260919-007": "规则二：7 分 36 秒内同额退款 3000 分两笔",
+    "FEE_ANOMALY@MT20260920-001": "规则四：美团 2.50% 超出约定 2.00% 容差",
+    "DUP_REFUND@MT20260920-005": "规则二：2 分 53 秒内同额退款 5000 分两笔",
+    "FEE_ANOMALY@MT20260921-005": "规则四：微信 0.81% 超出约定 0.60% 容差",
+    "AMOUNT_MISMATCH@MT20260921-006": "规则三：平台多付 88 分"
+  },
+  "t_reference_hint": "判定基准时点 T = 数据集中最新流水时间"
+}

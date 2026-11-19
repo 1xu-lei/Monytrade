@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}} · MoneyTrail 资金链路核查台</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">
+    <span class="brand-mark">MT</span>
+    <span class="brand-text">MoneyTrail<em>资金链路核查台</em></span>
+  </a>
+  <nav class="nav">{{nav}}</nav>
+  <div class="env mono">{{env}}</div>
+</header>
+<main>
+{{body}}
+</main>
+<footer class="foot">
+  <span>MoneyTrail v{{version}} · 金额全程整数「分」运算 · 零第三方依赖 · 服务端渲染无 JS</span>
+  <span class="mono">python app.py → http://127.0.0.1:8000</span>
+</footer>
+</body>
+</html>

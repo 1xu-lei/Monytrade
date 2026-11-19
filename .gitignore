@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+
+# 本地数据库与运行日志
+moneytrail.db
+moneytrail.db-*
+*.log
+
+# 调试/验收过程中生成的页面与图表快照
+_page_*.html
+_svg_*.svg
+reports/.snapshot.json

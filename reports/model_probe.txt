@@ -1,0 +1,6 @@
+
+=== 探测开始 2026-11-19 16:20:57 ===
+[trivial] 16.8s · 好 · usage={'completion_tokens': 2, 'prompt_tokens': 1153, 'total_tokens': 1155, 'prompt_tokens_details': {'cached_tokens': 1024}}
+[intent] 1.0s · {"intent":"unsettled_orders","order_id":"","month":"","confidence":0.95} · usage={'completion_tokens': 23, 'prompt_tokens': 70, 'total_tokens': 93, 'prompt_tokens_details': {'cached_tokens': 0}, 'prompt_cache_hit_tokens': 0, 'prompt_cache_miss_tokens': 70}
+[polish] 2.5s · 以数据最新流水时间为基准，结算表中查不到订单 MT20260919-004 的到账记录，涉及金额 230300 分，差额 230300 分。 · usage={'completion_tokens': 39, 'prompt_tokens': 91, 'total_tokens': 130, 'prompt_tokens_details': {'cached_tokens': 0}, 'prompt_cache_hit_tokens': 0, 'prompt_cache_miss_tokens': 91}
+=== 探测结束 ===

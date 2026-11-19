@@ -1,0 +1,20 @@
+<section class="page-head">
+  <div>
+    <h1>账单导入</h1>
+    <p class="muted">
+      三类 CSV 各自上传。校验按行号报错，任一行失败整份文件回滚；
+      同一文件按 SHA-256 识别，重复导入自动跳过。导入后自动重新对账。
+    </p>
+  </div>
+</section>
+
+{{banners}}
+
+<div class="uploads">{{forms}}</div>
+
+<section class="panel">
+  <header class="panel-head"><h2>导入批次</h2>
+    <span class="muted small">可追溯：哈希 + 行数 + 时间</span>
+  </header>
+  {{history}}
+</section>
