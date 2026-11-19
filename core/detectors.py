@@ -115,8 +115,9 @@ def raw_rows(conn, order_id: str) -> list:
         lines.append({"source": "refunds",
                       "text": f"{refund['refund_id']},{refund['order_id']},{refund['refunded_at']},"
                               f"{refund['amount_fen']},{refund['reason']}"})
-    settlement = models.get_settlement(conn, order_id)
-    if settlement:
+    for settlement in conn.execute(
+            "SELECT * FROM settlements WHERE order_id = ? ORDER BY settled_at, settlement_id",
+            (order_id,)):
         lines.append({"source": "settlements",
                       "text": f"{settlement['settlement_id']},{settlement['order_id']},"
                               f"{settlement['channel']},{settlement['settled_at']},"
