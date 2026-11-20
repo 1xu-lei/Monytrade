@@ -22,9 +22,42 @@ LOG_PATH = REPORT_DIR / "进度报备.log"
 LATEST_PATH = REPORT_DIR / "latest.md"
 SNAP_PATH = REPORT_DIR / ".snapshot.json"
 DB_PATH = BASE_DIR / "moneytrail.db"
-# 端口可能与别的本地服务冲突（本机 8000 被另一个项目占用），用环境变量覆盖
-SERVICE_PORT = os.environ.get("MONEYTRAIL_PORT", "8000")
-HEALTH_URL = f"http://127.0.0.1:{SERVICE_PORT}/health"
+DEFAULT_PORT = "8000"
+
+
+def service_port() -> str:
+    """探活端口：环境变量 MONEYTRAIL_PORT > 服务启动时写进库的 listen_port > 8000。
+
+    app.py 在默认端口被占时会自动顺延，并把实际端口写进 settings；
+    报备器读这里，才不会对着旧端口报「服务不可达」。
+    """
+    env = os.environ.get("MONEYTRAIL_PORT")
+    if env:
+        return env
+    if DB_PATH.exists():
+        try:
+            conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=3)
+            try:
+                row = conn.execute(
+                    "SELECT value FROM settings WHERE key = 'listen_port'").fetchone()
+            finally:
+                conn.close()
+            if row and row[0]:
+                return str(row[0])
+        except sqlite3.Error:
+            pass
+    return DEFAULT_PORT
+
+
+def http_health():
+    url = f"http://127.0.0.1:{service_port()}/health"
+    try:
+        with urllib.request.urlopen(url, timeout=3) as resp:
+            return f"OK {resp.status}", resp.read(160).decode("utf-8", "replace").replace("\n", " ")
+    except urllib.error.HTTPError as exc:
+        return f"HTTP {exc.code}", ""
+    except Exception as exc:  # noqa: BLE001 - 报备器不因服务未起而中断
+        return f"不可达（{type(exc).__name__}）", ""
 
 # 交付物清单：路径 -> (权重, 说明)。权重相加为 100。
 DELIVERABLES = [
@@ -50,16 +83,6 @@ DELIVERABLES = [
 ]
 
 DOC_PATH = BASE_DIR / "MoneyTrail-项目介绍书.md"
-
-
-def http_health():
-    try:
-        with urllib.request.urlopen(HEALTH_URL, timeout=3) as resp:
-            return f"OK {resp.status}", resp.read(160).decode("utf-8", "replace").replace("\n", " ")
-    except urllib.error.HTTPError as exc:
-        return f"HTTP {exc.code}", ""
-    except Exception as exc:  # noqa: BLE001 - 报备器不因服务未起而中断
-        return f"不可达（{type(exc).__name__}）", ""
 
 
 def db_stats():
@@ -190,7 +213,7 @@ def collect(seq: int) -> str:
     lines = [
         f"## 第 {seq} 次报备 · {now}",
         f"- 进度：**{earned}/100**（按介绍书交付物加权）",
-        f"- 服务：127.0.0.1:{SERVICE_PORT} → {health}",
+        f"- 服务：127.0.0.1:{service_port()} → {health}",
         f"- 台账：订单 {stats.get('订单')} / 退款 {stats.get('退款')} / 结算 {stats.get('结算')} / 工单 {stats.get('异常工单')}",
         f"- 工单状态：{stats.get('工单状态')}　未结缺口：{stats.get('未结缺口')}",
         f"- 介绍书：{doc['交付状态']}；{doc['验收清单']}",

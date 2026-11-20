@@ -56,6 +56,19 @@ class PortConflictTest(unittest.TestCase):
         self.assertIn("Get-NetTCPConnection", text)     # 给出查占用者的方法
         self.assertNotIn("Traceback", text)             # 不甩堆栈
 
+    def test_default_port_falls_back_instead_of_dying(self):
+        """`python app.py` 不该因为默认端口被占就跑不起来。"""
+        port = self.occupy()
+        output = io.StringIO()
+
+        with contextlib.redirect_stderr(output), contextlib.redirect_stdout(output):
+            server, actual = app._make_server("127.0.0.1", port, allow_fallback=True)
+        self.addCleanup(server.server_close)
+
+        self.assertNotEqual(actual, port)
+        self.assertIn(str(actual), output.getvalue())   # 顺延要说出来，不能偷偷换
+        self.assertEqual(server.server_address[1], actual)
+
 
 if __name__ == "__main__":
     unittest.main()

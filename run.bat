@@ -39,13 +39,14 @@ if errorlevel 1 (
 echo.
 
 :serve
-echo [2/2] 正在启动服务，浏览器请打开： http://127.0.0.1:8000
+echo [2/2] 正在启动服务，默认地址： http://127.0.0.1:8000
+echo       8000 若被别的程序占着会自动顺延，以窗口里的「服务地址」为准。
 echo       按 Ctrl+C 停止服务。
 echo.
 %PY% app.py
 if errorlevel 1 (
     echo.
-    echo [错误] 服务异常退出。若提示端口被占用，可改用： %PY% app.py --port 8001
+    echo [错误] 服务异常退出。若是端口问题，可改用： %PY% app.py --port 8001
     pause
     exit /b 1
 )

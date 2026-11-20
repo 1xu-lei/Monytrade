@@ -386,8 +386,12 @@ def _free_port(host: str, port: int, span: int = 20):
     return None
 
 
-def _make_server(host: str, port: int) -> ThreadingHTTPServer:
-    """绑定监听端口。失败时给出能照做的提示，而不是甩一屏堆栈。
+def _make_server(host: str, port: int, *, allow_fallback: bool = False):
+    """绑定监听端口，返回 (server, 实际端口)。
+
+    默认端口被占时自动往下顺延一个能用的端口并明确告知——`python app.py`
+    就该直接能跑。显式 `--port` 则不顺延：调用方指定了端口，就该按指定来，
+    失败时给出能照做的提示（顺延会让调用方连错地方）。
 
     Windows 上端口被占可能报两种错：
     - 10048 端口已被占用（对方用的是普通套接字）；
@@ -399,6 +403,12 @@ def _make_server(host: str, port: int) -> ThreadingHTTPServer:
     except OSError as exc:
         code = getattr(exc, "winerror", None) or exc.errno
         suggestion = _free_port(host, port)
+        if allow_fallback and suggestion is not None:
+            print(f"注意：{host}:{port} 已被别的程序占用（错误码 {code}），"
+                  f"自动改用 {host}:{suggestion}。", file=sys.stderr)
+            server = ThreadingHTTPServer((host, suggestion), Handler)
+            server.daemon_threads = True
+            return server, suggestion
         print(f"启动失败：{host}:{port} 绑定不上（{exc.strerror or exc}，错误码 {code}）。",
               file=sys.stderr)
         print("  最常见的原因是该端口已被别的程序占用"
@@ -409,13 +419,14 @@ def _make_server(host: str, port: int) -> ThreadingHTTPServer:
               "Select-Object OwningProcess", file=sys.stderr)
         raise SystemExit(2)
     server.daemon_threads = True
-    return server
+    return server, port
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="MoneyTrail 资金链路核查台")
     parser.add_argument("--host", default=config.HOST)
-    parser.add_argument("--port", type=int, default=config.PORT)
+    parser.add_argument("--port", type=int, default=None,
+                        help=f"监听端口，默认 {config.PORT}；默认端口被占用时自动顺延")
     parser.add_argument("--db", default=str(config.DB_PATH))
     args = parser.parse_args(argv)
 
@@ -423,10 +434,13 @@ def main(argv=None) -> int:
     if boot.get("seeded"):
         print(f"  已从 data/*.csv 自动导入 {boot['rows']} 行并完成首次对账")
 
-    server = _make_server(args.host, args.port)
+    port = args.port if args.port is not None else config.PORT
+    server, port = _make_server(args.host, port, allow_fallback=args.port is None)
     server.db_path = args.db
     conn = models.connect_ready(args.db)
     stats = reconciler.stats(conn)
+    # 记下实际监听端口：报备器据此探活，否则顺延端口后健康检查会一直报「不可达」。
+    models.set_setting(conn, "listen_port", str(port))
     conn.close()
     print(f"{config.APP_NAME} v{config.VERSION} · {config.APP_SUBTITLE}")
     print(f"  数据库 : {args.db}")
@@ -434,7 +448,7 @@ def main(argv=None) -> int:
           f"{stats['settlement_count']} / refunds {stats['refund_count']}")
     print(f"  工单   : {stats['all_count']} 笔，未结缺口 {stats['open_gap_fen']} 分")
     print(f"  基准时点 T = {stats['reference_time'] or '（无数据）'}")
-    print(f"  服务地址: http://{args.host}:{args.port}   (Ctrl+C 停止)")
+    print(f"  服务地址: http://{args.host}:{port}   (Ctrl+C 停止)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

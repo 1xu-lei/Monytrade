@@ -20,7 +20,10 @@ $LogPath = Join-Path $PSScriptRoot '进度报备.log'
 $LatestPath = Join-Path $PSScriptRoot 'latest.md'
 $SnapPath = Join-Path $PSScriptRoot '.snapshot_ps.json'
 $PySnapPath = Join-Path $PSScriptRoot '.snapshot.json'
-$HealthUrl = 'http://127.0.0.1:8000/health'
+# 端口可能被别的本地服务占用（app.py 默认端口被占时会自动顺延），用环境变量覆盖。
+# 兜底分支只在 Python 起不来时才走到，读不了库里的 listen_port，所以这里只认环境变量。
+$HealthPort = if ($env:MONEYTRAIL_PORT) { $env:MONEYTRAIL_PORT } else { '8000' }
+$HealthUrl = "http://127.0.0.1:$HealthPort/health"
 $PyProbeSeconds = 45
 
 function Get-Health {
@@ -208,7 +211,7 @@ function Write-Snapshot {
 
     $blockLines = @(
         "## 第 $seq 次报备 · $now（PowerShell 兜底：Python 不可用）",
-        "- 服务：127.0.0.1:8000 → $(Get-Health)",
+        "- 服务：127.0.0.1:$HealthPort → $(Get-Health)",
         "- Python：不可用 —— $($py.reason)",
         "- 台账：未取数（需要 Python 读库；本段不填任何推算值）"
     )

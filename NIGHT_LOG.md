@@ -138,3 +138,12 @@
 | 真因 | 8000 被**另一个项目**占用：`Competition_game\backend\.venv\python.exe -m uvicorn app.main:app --port 8000`（09:00:34 启动）。uvicorn 走 asyncio，在 Windows 上给套接字设了 `SO_EXCLUSIVEADDRUSE`，后到的 `HTTPServer`（`SO_REUSEADDR`）抢同一端口，系统回的是 10013 而不是 10048 |
 | 处理 | `app.py` 新增 `_make_server()` / `_free_port()`：绑定失败时退出码 2，打印端口号、错误码、可照做的 `--port` 建议与查占用者的命令，不再甩堆栈；README 增加「端口被占怎么办」 |
 | 验证 | 新增 `tests/test_startup.py`（2 条，Windows 下用 `SO_EXCLUSIVEADDRUSE` 复现 10013）：断言退出码 2、含 `--port` 与 `Get-NetTCPConnection`、且无 Traceback；实机 `python app.py` 输出建议 8001，`--port 8001` 起来后 `/health` 200 |
+
+## 表十 · 默认端口被占：自动顺延而不是罢工（09:40）
+
+| 项 | 处理 |
+|---|---|
+| 触发 | 本机 8000 长期被另一个项目的 uvicorn 占用，`python app.py` 每次都起不来 |
+| 行为 | 未显式指定 `--port` 时，默认端口被占会自动顺延到下一个可用端口，并打印「注意：8000 已被占用，自动改用 8001」；显式 `--port` 失败仍按错误处理（调用方指定了端口，不能偷偷换） |
+| 顺带 | 启动时把实际端口写入 `settings.listen_port`；报备器探活顺序改为 环境变量 `MONEYTRAIL_PORT` > `listen_port` > 8000，避免顺延后一直报「服务不可达」 |
+| 验证 | `tests/test_startup.py` 增 `test_default_port_falls_back_instead_of_dying`；实机 `python app.py` 自动用 8001，`/health` 200 |
