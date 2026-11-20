@@ -129,3 +129,12 @@
 | 版本库 | `.gitignore` 补 `reports/.snapshot*.json` 与 `reports/latest.md`；报备运行产物不再入库（`git rm --cached`） | 本轮改动单独提交，工作树干净 |
 
 验证：`check.py` 10 / 10、`unittest` 167 tests OK、`reports/acceptance.py` 14 / 14。
+
+## 表九 · 启动期体验：端口被占要说人话（09:20）
+
+| 项 | 说明 |
+|---|---|
+| 现象 | 用户执行 `python app.py` 直接抛 `PermissionError: [WinError 10013]`，看起来像权限/防火墙问题 |
+| 真因 | 8000 被**另一个项目**占用：`Competition_game\backend\.venv\python.exe -m uvicorn app.main:app --port 8000`（09:00:34 启动）。uvicorn 走 asyncio，在 Windows 上给套接字设了 `SO_EXCLUSIVEADDRUSE`，后到的 `HTTPServer`（`SO_REUSEADDR`）抢同一端口，系统回的是 10013 而不是 10048 |
+| 处理 | `app.py` 新增 `_make_server()` / `_free_port()`：绑定失败时退出码 2，打印端口号、错误码、可照做的 `--port` 建议与查占用者的命令，不再甩堆栈；README 增加「端口被占怎么办」 |
+| 验证 | 新增 `tests/test_startup.py`（2 条，Windows 下用 `SO_EXCLUSIVEADDRUSE` 复现 10013）：断言退出码 2、含 `--port` 与 `Get-NetTCPConnection`、且无 Traceback；实机 `python app.py` 输出建议 8001，`--port 8001` 起来后 `/health` 200 |

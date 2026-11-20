@@ -34,6 +34,12 @@ python check.py
 
 Windows 用户也可以直接**双击 `run.bat`**：它会先补数据、再起服务，并在窗口里提示服务地址。
 
+> **端口被占怎么办**：默认 8000 端口可能被别的程序（例如另一个项目的 uvicorn）占着。
+> Windows 下会报 `WinError 10013`（访问权限不允许）而非常见的 10048，意思都是「这个端口被拿走了」。
+> 服务会直接告诉你换哪个端口，照着执行即可：
+> `python app.py --port 8001`，然后开 `http://127.0.0.1:8001`。
+> 查是谁占的：`Get-NetTCPConnection -LocalPort 8000 | Select-Object OwningProcess`
+
 可选参数：
 
 ```bash

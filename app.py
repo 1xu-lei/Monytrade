@@ -11,6 +11,7 @@ import argparse
 import json
 import mimetypes
 import re
+import socket
 import sys
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -373,6 +374,44 @@ def bootstrap(db_path) -> dict:
         conn.close()
 
 
+def _free_port(host: str, port: int, span: int = 20):
+    """从 port+1 起找一个能绑上的端口，用于给「端口被占」的提示提建议。"""
+    for candidate in range(port + 1, port + 1 + span):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.bind((host, candidate))
+            return candidate
+        except OSError:
+            continue
+    return None
+
+
+def _make_server(host: str, port: int) -> ThreadingHTTPServer:
+    """绑定监听端口。失败时给出能照做的提示，而不是甩一屏堆栈。
+
+    Windows 上端口被占可能报两种错：
+    - 10048 端口已被占用（对方用的是普通套接字）；
+    - 10013 访问权限不允许（对方用 asyncio/uvicorn 那类会设 SO_EXCLUSIVEADDRUSE 的进程）。
+    两者对使用者是同一件事：这个端口被别的程序拿走了。
+    """
+    try:
+        server = ThreadingHTTPServer((host, port), Handler)
+    except OSError as exc:
+        code = getattr(exc, "winerror", None) or exc.errno
+        suggestion = _free_port(host, port)
+        print(f"启动失败：{host}:{port} 绑定不上（{exc.strerror or exc}，错误码 {code}）。",
+              file=sys.stderr)
+        print("  最常见的原因是该端口已被别的程序占用"
+              "（WinError 10013/10048 都是这个意思）。", file=sys.stderr)
+        if suggestion:
+            print(f"  换一个端口：python app.py --port {suggestion}", file=sys.stderr)
+        print(f"  查是谁占的：Get-NetTCPConnection -LocalPort {port} | "
+              "Select-Object OwningProcess", file=sys.stderr)
+        raise SystemExit(2)
+    server.daemon_threads = True
+    return server
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="MoneyTrail 资金链路核查台")
     parser.add_argument("--host", default=config.HOST)
@@ -384,8 +423,7 @@ def main(argv=None) -> int:
     if boot.get("seeded"):
         print(f"  已从 data/*.csv 自动导入 {boot['rows']} 行并完成首次对账")
 
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    server.daemon_threads = True
+    server = _make_server(args.host, args.port)
     server.db_path = args.db
     conn = models.connect_ready(args.db)
     stats = reconciler.stats(conn)
