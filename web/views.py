@@ -147,10 +147,18 @@ def _label_bars(stats) -> str:
 
 # ---------------------------------------------------------------- 异常中心
 
-def anomalies_page(conn, filters: dict, flash: str = "") -> str:
+# 每页工单数。list_anomalies 的 limit/offset 就是给这里用的；
+# 导出链接始终按筛选条件取全量，不受分页影响。
+PAGE_SIZE = 20
+
+
+def anomalies_page(conn, filters: dict, flash: str = "", page: int = 1) -> str:
     env = environment(conn)
-    rows = with_evidence(models.list_anomalies(conn, **filters))
     total = models.count_anomalies(conn, **filters)
+    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(max(page, 1), pages)
+    rows = with_evidence(models.list_anomalies(
+        conn, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE, **filters))
     query = urlencode({key: value for key, value in filters.items() if value})
     return_to = "/anomalies" + (f"?{query}" if query else "")
 
@@ -173,9 +181,11 @@ def anomalies_page(conn, filters: dict, flash: str = "") -> str:
             + "</tbody></table>"
         )
 
+    page_note = f"（第 {page} / {pages} 页，缺口为本页合计）" if pages > 1 else ""
     summary = (
         f'<div class="count-line">共 <b>{total}</b> 笔工单，'
         f'缺口合计 <b>{yuan_mark(sum(int(row["gap_fen"]) for row in rows))}</b>'
+        f'{page_note}'
         f'{"（已按筛选条件过滤）" if query else ""}</div>'
     )
 
@@ -187,8 +197,27 @@ def anomalies_page(conn, filters: dict, flash: str = "") -> str:
     )
 
     return _page("anomalies.html", "异常中心", "anomalies", env,
-                 filters=form, summary=summary, table=table, empty=empty,
+                 filters=form, summary=summary, pager=_pager(page, pages, query),
+                 table=table, empty=empty,
                  export_links=export_links, flash=flash)
+
+
+def _pager(page: int, pages: int, query: str) -> str:
+    """分页条：只改 page 参数，筛选条件原样带回。"""
+    if pages <= 1:
+        return ""
+
+    def link(target: int, text: str) -> str:
+        params = f"{query}&amp;" if query else ""
+        return f'<a class="btn" href="/anomalies?{params}page={target}">{text}</a>'
+
+    parts = []
+    if page > 1:
+        parts.append(link(page - 1, "上一页"))
+    parts.append(f'<span class="muted small">第 {page} / {pages} 页</span>')
+    if page < pages:
+        parts.append(link(page + 1, "下一页"))
+    return '<div class="quick">' + "".join(parts) + "</div>"
 
 
 def _filter_form(filters: dict) -> str:
@@ -295,9 +324,9 @@ def _related_orders(conn, order_id: str) -> str:
 # ---------------------------------------------------------------- 问答
 
 EXAMPLES = (
-    ("/assistant?q=今天哪几笔没到账", "今天哪几笔没到账"),
-    ("/assistant?q=MT20260921-001 这笔为什么对不上", "MT20260921-001 为什么对不上"),
-    ("/assistant?q=这个月手续费多收了多少", "这个月手续费多收了多少"),
+    ("今天哪几笔没到账", "今天哪几笔没到账"),
+    ("MT20260921-001 这笔为什么对不上", "MT20260921-001 为什么对不上"),
+    ("这个月手续费多收了多少", "这个月手续费多收了多少"),
 )
 
 
@@ -356,7 +385,8 @@ def assistant_page(conn, question: str = "", flash: str = "") -> str:
         transparency = ""
 
     examples = "".join(
-        f'<a class="chip" href="{href}">{text}</a>' for href, text in EXAMPLES
+        f'<a class="chip" href="/assistant?{urlencode({"q": question})}">{text}</a>'
+        for question, text in EXAMPLES
     )
     ask_form = (
         '<form class="ask" method="get" action="/assistant">'

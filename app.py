@@ -137,7 +137,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def page_anomalies(self, conn, params):
         self._html(200, views.anomalies_page(conn, self._filters(params),
-                                            flash=_first(params, "msg")))
+                                            flash=_first(params, "msg"),
+                                            page=_int_param(params, "page", 1)))
 
     def page_trail(self, conn, params, order_id):
         self._html(200, views.trail_page(conn, unquote(order_id), flash=_first(params, "msg")))
@@ -302,6 +303,14 @@ class Handler(BaseHTTPRequestHandler):
 def _first(params: dict, key: str) -> str:
     """取单值查询参数。msg 等参数会原样进页面，因此在这里统一转义。"""
     return escape((params.get(key) or [""])[0])
+
+
+def _int_param(params: dict, key: str, default: int) -> int:
+    """取整数查询参数；?page=abc 之类的输入回落默认值，不抛异常。"""
+    try:
+        return int((params.get(key) or [default])[0])
+    except (TypeError, ValueError):
+        return default
 
 
 def _safe_name(order_id: str) -> str:

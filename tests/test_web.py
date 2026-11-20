@@ -199,6 +199,37 @@ class ViewTest(DemoTests):
         html = views.anomalies_page(self.conn, filters)
         self.assertIn("当前筛选条件下没有异常", html)
 
+    def test_anomalies_pagination_splits_and_clamps(self):
+        original = views.PAGE_SIZE
+        self.addCleanup(setattr, views, "PAGE_SIZE", original)
+        views.PAGE_SIZE = 4
+        filters = {"label": "", "severity": "", "status": "",
+                   "date_from": "", "date_to": ""}
+        first = views.anomalies_page(self.conn, filters, page=1)
+        self.assertIn("第 1 / 3 页", first)
+        self.assertIn("下一页", first)
+        self.assertNotIn("上一页", first)
+        # 越界页回落到最后一页，而不是渲染成「没有异常」
+        last = views.anomalies_page(self.conn, filters, page=99)
+        self.assertIn("第 3 / 3 页", last)
+        self.assertIn("上一页", last)
+        self.assertNotIn("当前筛选条件下没有异常", last)
+
+    def test_anomalies_pager_keeps_filters(self):
+        original = views.PAGE_SIZE
+        self.addCleanup(setattr, views, "PAGE_SIZE", original)
+        views.PAGE_SIZE = 2
+        filters = {"label": "NOT_SETTLED", "severity": "", "status": "",
+                   "date_from": "", "date_to": ""}
+        html = views.anomalies_page(self.conn, filters, page=1)
+        self.assertIn("label=NOT_SETTLED&amp;page=2", html)
+        self.assertIn("第 1 / 2 页", html)
+
+    def test_assistant_example_links_are_url_encoded(self):
+        html = views.assistant_page(self.conn, "")
+        self.assertIn("/assistant?q=%E4%BB%8A%E5%A4%A9", html)
+        self.assertNotIn("q=今天", html)
+
     def test_trail_page_contains_pipeline_and_evidence(self):
         html = views.trail_page(self.conn, "MT20260921-001")
         self.assertIn("<svg", html)

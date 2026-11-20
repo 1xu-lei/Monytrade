@@ -105,6 +105,15 @@ python reports/progress_reporter.py --loop 1800 # 每 30 分钟落一份（常�
 - `reports/latest.md` —— 最新一次快照（进度分、服务健康、台账数字、缺口清单、与上次的差异）
 - `reports/进度报备.log` —— 全量追加日志
 
+Python 解释器起不来时，用 PowerShell 版兜底。它会**先真正跑一次** `progress_reporter.py`：跑得通就照常落真实台账；跑不通才写兜底快照，且台账写「未取数」，只手抄上一次成功读数作参照，不填任何推算数字。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reports\progress_reporter.ps1 -IntervalSeconds 1800
+```
+
+> 本机若出现「`python -V` 秒回、跑脚本却卡住」的环境级挂起（安全软件拦截解释器初始化），可用文件重定向绕开：
+> `cmd /c ""<python.exe>" -u reports\progress_reporter.py > out.txt 2>&1`
+
 ---
 
 ## 模型接入（自然语言助手）

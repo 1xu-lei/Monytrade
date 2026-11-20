@@ -46,7 +46,7 @@ def _parse(text):
 
 
 def _wrap(text: str, limit: int) -> list:
-    """按字符数硬折行（中文按 1 个宽度计）。"""
+    """按字符数硬折行（中文按 1 个宽度计）；「¥241.61」这类金额不拆到两行。"""
     text = text or ""
     if len(text) <= limit:
         return [text]
@@ -54,8 +54,11 @@ def _wrap(text: str, limit: int) -> list:
     for char in text:
         current += char
         if len(current) >= limit:
-            lines.append(current)
-            current = ""
+            cut = len(current)
+            while cut > 1 and current[cut - 1] in "0123456789.¥,":
+                cut -= 1
+            lines.append(current[:cut])
+            current = current[cut:]
     if current:
         lines.append(current)
     return lines[:3]

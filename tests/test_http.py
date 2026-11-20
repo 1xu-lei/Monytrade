@@ -113,6 +113,13 @@ class HttpTest(unittest.TestCase):
         self.assertIn("badge-fee-anomaly", filtered["body"])
         self.assertNotIn("badge-dup-refund", filtered["body"])
 
+    def test_anomaly_pagination_param_is_tolerated(self):
+        # 分页参数非法或越界都必须照常出页，不 500
+        for path in ("/anomalies?page=abc", "/anomalies?page=0", "/anomalies?page=99"):
+            response = self.get(path)
+            self.assertEqual(response["status"], 200, path)
+            self.assertIn("异常中心", response["body"])
+
     def test_trail_page_and_404(self):
         ok = self.get("/trail/MT20260921-001")
         self.assertEqual(ok["status"], 200)
