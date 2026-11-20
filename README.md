@@ -40,6 +40,10 @@ Windows 用户也可以直接**双击 `run.bat`**：它会先补数据、再起�
 python app.py --host 127.0.0.1 --port 8000 --db moneytrail.db
 ```
 
+> 端口被别的本地服务占了怎么办？换个端口即可，例如 `python app.py --port 8090`，
+> 并把报备器的健康检查指过去：`set MONEYTRAIL_PORT=8090`（PowerShell 用 `$env:MONEYTRAIL_PORT='8090'`）。
+> 本机开发时 8000 常被其他项目（如 uvicorn 服务）占用，报错是 `PermissionError: [WinError 10013]`。
+
 ---
 
 ## 目录结构

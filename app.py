@@ -97,6 +97,13 @@ class Handler(BaseHTTPRequestHandler):
                 if conn is not None:
                     conn.close()
             return
+        # 路径存在但方法不对（例如用 GET 打开只接受 POST 的「重新对账」）：
+        # 回 405 而不是 404，排错时才分得清「地址写错」和「动作要用表单提交」。
+        allowed = sorted({route_method for route_method, pattern, _ in ROUTES
+                          if pattern.match(path)})
+        if allowed:
+            self._method_not_allowed(allowed)
+            return
         self._not_found(None)
 
     # ------------------------------------------------------------ 响应
@@ -298,6 +305,23 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             body = "<h1>页面不存在</h1>"
         self._html(404, body)
+
+    def _method_not_allowed(self, allowed: list):
+        try:
+            body = views.error_page(
+                "这个地址不支持该请求方式",
+                hint="这条路由接受：" + "、".join(allowed) +
+                     "。写操作请用页面上的表单提交，不要直接在地址栏回车。")
+        except Exception:
+            body = "<h1>请求方式不被支持</h1>"
+        payload = body.encode("utf-8")
+        self.send_response(405)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Allow", ", ".join(allowed))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
 
 
 def _first(params: dict, key: str) -> str:

@@ -120,6 +120,23 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(response["status"], 200, path)
             self.assertIn("异常中心", response["body"])
 
+    def test_wrong_method_returns_405_with_allow(self):
+        # GET 打开只接受 POST 的动作路由：要 405 + Allow，而不是 404
+        for path in ("/reconcile", "/ai/toggle", "/anomalies/AN-NS-001/status"):
+            response = self.get(path)
+            self.assertEqual(response["status"], 405, path)
+            self.assertIn("POST", response["headers"].get("Allow", ""), path)
+
+    def test_post_to_read_only_route_returns_405(self):
+        response = self.request("POST", "/anomalies", b"",
+                                {"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertEqual(response["status"], 405)
+        self.assertIn("GET", response["headers"].get("Allow", ""))
+
+    def test_unknown_path_still_returns_404(self):
+        response = self.get("/no-such-page")
+        self.assertEqual(response["status"], 404)
+
     def test_trail_page_and_404(self):
         ok = self.get("/trail/MT20260921-001")
         self.assertEqual(ok["status"], 200)

@@ -165,6 +165,7 @@ def error_table(errors: list) -> str:
         for item in errors
     )
     return (
-        '<table class="error-table"><thead><tr><th>位置</th><th>字段</th><th>问题</th></tr>'
+        '<table class="error-table"><thead><tr>'
+        '<th scope="col">位置</th><th scope="col">字段</th><th scope="col">问题</th></tr>'
         f"</thead><tbody>{rows}</tbody></table>"
     )

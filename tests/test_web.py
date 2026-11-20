@@ -320,6 +320,25 @@ class GroundTruthConsistencyTest(DemoTests):
         self.assertEqual(stats["received_fen"], received)
         self.assertEqual(stats["open_gap_fen"], gap)
         self.assertEqual(stats["all_count"], 9)
+        # 演示集的档位分布：高 5 / 中 2 / 低 2
+        self.assertEqual(stats["by_severity"], {"high": 5, "medium": 2, "low": 2})
+
+    def test_overview_severity_line_uses_stats(self):
+        stats = reconciler.stats(self.conn)
+        html = views.overview(self.conn)
+        expected = "高 {} / 中 {} / 低 {}".format(
+            stats["by_severity"]["high"], stats["by_severity"]["medium"],
+            stats["by_severity"]["low"])
+        self.assertIn(expected, html)
+        self.assertIn("高 5 / 中 2 / 低 2", html)
+
+    def test_overview_is_screen_reader_friendly(self):
+        html = views.overview(self.conn)
+        self.assertIn('<th scope="col">订单号</th>', html)
+        # 条形图是纯视觉宽度，必须带可朗读的文字替代
+        self.assertIn('role="img"', html)
+        self.assertIn('aria-label="已支付未到账 3 笔，占全部工单 33%"', html)
+        self.assertIn('aria-hidden="true"', html)
 
     def test_health_payload_is_json_serialisable(self):
         payload = {"orders": reconciler.stats(self.conn)["order_count"]}

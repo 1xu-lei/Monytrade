@@ -7,6 +7,7 @@
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 import time
@@ -21,7 +22,9 @@ LOG_PATH = REPORT_DIR / "进度报备.log"
 LATEST_PATH = REPORT_DIR / "latest.md"
 SNAP_PATH = REPORT_DIR / ".snapshot.json"
 DB_PATH = BASE_DIR / "moneytrail.db"
-HEALTH_URL = "http://127.0.0.1:8000/health"
+# 端口可能与别的本地服务冲突（本机 8000 被另一个项目占用），用环境变量覆盖
+SERVICE_PORT = os.environ.get("MONEYTRAIL_PORT", "8000")
+HEALTH_URL = f"http://127.0.0.1:{SERVICE_PORT}/health"
 
 # 交付物清单：路径 -> (权重, 说明)。权重相加为 100。
 DELIVERABLES = [
@@ -155,6 +158,27 @@ def diff_since_last(signatures):
     return added, changed, removed
 
 
+def log_last_seq() -> int:
+    """日志里已出现的最大序号。
+
+    序号以**日志本身**为准：Python 版与 PowerShell 兜底版都会往同一个日志追加，
+    各自读自己的快照文件计数就会撞号（实测出现过两条「第 38 次」）。
+    """
+    if not LOG_PATH.exists():
+        return 0
+    last = 0
+    with LOG_PATH.open(encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if not line.startswith("## 第 "):
+                continue
+            try:
+                number = int(line.split("## 第 ", 1)[1].split(" 次", 1)[0])
+            except (IndexError, ValueError):
+                continue
+            last = max(last, number)
+    return last
+
+
 def collect(seq: int) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     health, health_body = http_health()
@@ -166,7 +190,7 @@ def collect(seq: int) -> str:
     lines = [
         f"## 第 {seq} 次报备 · {now}",
         f"- 进度：**{earned}/100**（按介绍书交付物加权）",
-        f"- 服务：127.0.0.1:8000 → {health}",
+        f"- 服务：127.0.0.1:{SERVICE_PORT} → {health}",
         f"- 台账：订单 {stats.get('订单')} / 退款 {stats.get('退款')} / 结算 {stats.get('结算')} / 工单 {stats.get('异常工单')}",
         f"- 工单状态：{stats.get('工单状态')}　未结缺口：{stats.get('未结缺口')}",
         f"- 介绍书：{doc['交付状态']}；{doc['验收清单']}",
@@ -209,6 +233,7 @@ def main(argv=None):
             seq = int(json.loads(SNAP_PATH.read_text(encoding="utf-8")).get("seq", 0))
         except (OSError, ValueError):
             seq = 0
+    seq = max(seq, log_last_seq())
 
     while True:
         seq += 1

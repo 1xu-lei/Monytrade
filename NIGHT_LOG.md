@@ -106,3 +106,26 @@
 > 环境备注（与项目无关）：本轮复验开始时，本机 `python.exe` 在受限会话内启动即挂死（`python -V` 之外全部卡在解释器初始化），
 > 换成系统「任务计划程序」拉起后一切正常，`python -V` 也正常返回 3.14.5 —— 判定为安全软件 / 沙箱层拦截，**应用侧无回归**。
 > 该现象已写入 `02 部署或运行入口/运行说明.md` 常见问题第 2 条（换解释器绝对路径 / 加白名单 / 用计划任务）。
+## 表六 · 08:46 恢复记录（Python 可用、端口迁移）
+
+| 项 | 事实 | 证据 |
+|---|---|---|
+| Python 恢复 | 08:46 复测 \python.exe\ 跑 \print('hello')\ 正常退出（前一夜 02:49 仍挂死） | 探针 exited=True，out=[hello] |
+| 端口冲突 | 8000 已被另一个项目占用：\C:\Users\11\Desktop\Competition_game\backend\.venv\python.exe -m uvicorn app.main:app --port 8000\，MoneyTrail 启动报 \PermissionError: [WinError 10013]\ | 进程命令行 + 报错堆栈 |
+| 端口迁移 | MoneyTrail 改跑 **8090**；报备器新增 \MONEYTRAIL_PORT\ 环境变量覆盖健康检查地址（并修正快照里的端口标签） | \/health\ 8090 返回 orders=24 settlements=21 anomalies=9 ai=true |
+| 报备恢复 | 切回 Python 版报备器（信息更全：能读库、报工单状态与缺口），第 47 期 08:56:27 显示 \127.0.0.1:8090 → OK 200\ | reports/latest.md |
+| 三道闸门 | \check.py\ 10/10；\unittest\ 167 tests OK；\cceptance.py\ 14/14（检出率 100%、幂等 9→9→9、重启后状态仍在） | 本轮实跑输出 |
+| 助手实测 | \/assistant\ 8090 上问「今天哪几笔没到账」→ 6.5 s，模型措辞（已通过数字校验），状态栏 \Baize-Omni-Sense · http://127.0.0.1:8766/v1\ | HTTP 200 |
+
+## 表八 · 收口后的四项加固（08:45–09:05）
+
+| 项 | 处理 | 证据 |
+|---|---|---|
+| 常驻报备器还在跑旧代码 | 停掉 02:49 启动的旧进程（PID 39476，内存里是旧脚本），改用修好的脚本重启常驻；新进程首轮即走「真正跑一次 Python 版」的判断 | 后台任务首轮输出「Python 报备成功」；`latest.md` 第 47 次为真实台账（订单 24 / 退款 9 / 结算 21 / 工单 9） |
+| 快照序号撞号 | 两版报备器统一为「取日志里最大 N + 1」，快照文件里的 seq 只作兜底 | 序号 43→47 连续无重号（此前「第 38 次」出现过两条） |
+| 档位映射漂移 | `reconciler.stats()` 增加 `by_severity`（SQL `GROUP BY severity`）；总览卡片的「高/中/低」改读该字段，视图不再自己推断哪类规则算高危 | 新增断言：演示集 高 5 / 中 2 / 低 2，且 `sum(by_severity) == all_count` |
+| 方法不匹配返回 404 | 路径命中但方法不对时返回 405 并带 `Allow` 头 | 新增 3 条 HTTP 用例：`GET /reconcile`、`GET /ai/toggle`、`GET /anomalies/<id>/status` 均 405；`POST /anomalies` 为 405；未知路径仍 404 |
+| 可访问性 | 表头补 `scope="col"`；规则分布条形图补 `role="img"` + `aria-label`（如「已支付未到账 3 笔，占全部工单 33%」），视觉元素标 `aria-hidden` | 新增用例断言上述片段 |
+| 版本库 | `.gitignore` 补 `reports/.snapshot*.json` 与 `reports/latest.md`；报备运行产物不再入库（`git rm --cached`） | 本轮改动单独提交，工作树干净 |
+
+验证：`check.py` 10 / 10、`unittest` 167 tests OK、`reports/acceptance.py` 14 / 14。

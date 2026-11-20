@@ -94,10 +94,9 @@ def overview(conn, flash: str = "") -> str:
                     f'{stats["open_count"]} 笔未结工单的缺口合计', "card-gap"),
         c.stat_card("异常笔数", f'{stats["all_count"]} 笔',
                     "高 {} / 中 {} / 低 {}".format(
-                        sum(1 for label in ("NOT_SETTLED", "DUP_REFUND")
-                            for _ in range(stats["by_label"][label])),
-                        sum(1 for _ in range(stats["by_label"]["AMOUNT_MISMATCH"])),
-                        sum(1 for _ in range(stats["by_label"]["FEE_ANOMALY"]))),
+                        stats["by_severity"]["high"],
+                        stats["by_severity"]["medium"],
+                        stats["by_severity"]["low"]),
                     "card-ink"),
     ])
 
@@ -136,11 +135,15 @@ def _label_bars(stats) -> str:
     for label in config.LABELS:
         count = stats["by_label"][label]
         width = max(int(count / total * 100), 2 if count else 0)
+        share = round(count / total * 100)
+        # 条形宽度只是视觉表达，读屏软件要能直接听到「哪类规则、几笔、占多少」。
         rows.append(
-            f'<div class="bar-row"><span class="bar-label">{c.label_badge(label)}</span>'
-            f'<span class="bar-track"><span class="bar-fill bar-{label.lower()}" '
+            f'<div class="bar-row" role="img" '
+            f'aria-label="{c.esc(config.LABEL_TEXT[label])} {count} 笔，占全部工单 {share}%">'
+            f'<span class="bar-label" aria-hidden="true">{c.label_badge(label)}</span>'
+            f'<span class="bar-track" aria-hidden="true"><span class="bar-fill bar-{label.lower()}" '
             f'style="width:{width}%"></span></span>'
-            f'<span class="bar-count">{count}</span></div>'
+            f'<span class="bar-count" aria-hidden="true">{count}</span></div>'
         )
     return "".join(rows)
 

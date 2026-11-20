@@ -65,6 +65,20 @@ class FixtureReconcileTest(TempDBTest):
         self.assertEqual(first["carried"], 0)
         self.assertEqual(first["created"], first["total"])
 
+    def test_stats_counts_by_severity_matches_table(self):
+        """总览卡片的「高/中/低」必须来自库里的 severity，而不是视图猜的 label 映射。"""
+        reconciler.reconcile(self.conn)
+        stats = reconciler.stats(self.conn)
+
+        rows = {row["severity"]: row["n"] for row in self.conn.execute(
+            "SELECT severity, COUNT(*) AS n FROM anomalies GROUP BY severity")}
+        for level in config.SEVERITY_TEXT:
+            self.assertEqual(stats["by_severity"][level], rows.get(level, 0), level)
+        self.assertEqual(sum(stats["by_severity"].values()), stats["all_count"])
+        # 档位表本身也不能和 config.SEVERITY 脱节
+        for label, level in config.SEVERITY.items():
+            self.assertIn(level, stats["by_severity"], label)
+
     def test_reconcile_keeps_status_note_and_first_seen(self):
         reconciler.reconcile(self.conn)
         target = models.list_anomalies(self.conn)[0]

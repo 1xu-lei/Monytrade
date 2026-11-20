@@ -9,4 +9,10 @@ moneytrail.db-*
 # 调试/验收过程中生成的页面与图表快照
 _page_*.html
 _svg_*.svg
-reports/.snapshot.json
+reports/.snapshot*.json
+reports/latest.md
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db

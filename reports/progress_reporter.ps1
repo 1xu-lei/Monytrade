@@ -148,8 +148,17 @@ function Get-FileSignatures {
 }
 
 function Get-NextSeq {
-    # Python 版与 PowerShell 版共用同一份追加日志，序号必须共用一套计数。
+    # Python 版与 PowerShell 版共用同一份追加日志，所以序号以「日志里的最大 N」为准：
+    # 各自读自己的快照文件会撞号（实测出现过两条「第 38 次」）。
     $seq = 0
+    if (Test-Path $LogPath) {
+        foreach ($line in (Get-Content $LogPath -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            if ($line -match '^## 第 (\d+) 次报备') {
+                $value = [int]$Matches[1]
+                if ($value -gt $seq) { $seq = $value }
+            }
+        }
+    }
     foreach ($path in @($SnapPath, $PySnapPath)) {
         if (-not (Test-Path $path)) { continue }
         try {

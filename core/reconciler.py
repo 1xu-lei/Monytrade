@@ -114,6 +114,11 @@ def stats(conn) -> dict:
     by_label = {label: 0 for label in config.LABELS}
     for row in conn.execute("SELECT label_code, COUNT(*) AS n FROM anomalies GROUP BY label_code"):
         by_label[row["label_code"]] = row["n"]
+    # 严重度计数同样由 SQL 给出：视图不再自己猜「哪类规则算高危」，
+    # 规则表（detectors）改档位时这里自动跟着变。
+    by_severity = {level: 0 for level in config.SEVERITY_TEXT}
+    for row in conn.execute("SELECT severity, COUNT(*) AS n FROM anomalies GROUP BY severity"):
+        by_severity[row["severity"]] = row["n"]
 
     return {
         "order_count": order_row["n"],
@@ -128,6 +133,7 @@ def stats(conn) -> dict:
         "all_gap_fen": total_row["gap"],
         "all_count": total_row["n"],
         "by_label": by_label,
+        "by_severity": by_severity,
         "reference_time": models.reference_time(conn),
     }
 
