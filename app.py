@@ -46,6 +46,13 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "MoneyTrail/" + config.VERSION
     protocol_version = "HTTP/1.1"
 
+    def handle_one_request(self):
+        """客户端提前断开是常态（刷新、关页面、探活超时），不要刷一屏堆栈。"""
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            self.close_connection = True
+
     # ------------------------------------------------------------ 基础
 
     def log_message(self, fmt, *args):
@@ -82,7 +89,8 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 conn = self._connect()
                 getattr(self, handler_name)(conn, params, **match.groupdict())
-            except BrokenPipeError:
+            except (BrokenPipeError, ConnectionResetError):
+                # 客户端提前断开（刷新页面、关标签页、探活超时）：不是错误，不刷堆栈。
                 return
             except views.NotFound as exc:
                 self._not_found(conn, str(exc))
